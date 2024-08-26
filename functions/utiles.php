@@ -66,14 +66,10 @@ function requestConstructor(array $data): Httpful\Request
 }
 
 
-function logUsuario(Nutgram $bot, string $mensaje): void
+function escribirLog(string $texto): void
 {
-    // Definimos variables.
-    $usuario = getNombreUsuario($bot);
-    $userId = getIdUsuario($bot);
     $ruta = RUTA_HOST.'/logs/';
-    $fichero = "log_".date("yM").".log";
-    $texto = date("d.F H:i:s")." [$usuario:$userId] -> ".$mensaje."\n";
+    $fichero = FICHERO_LOG;
     if (file_exists($ruta)) {
         // si el fichero existe - borrarlo primero
         $ruta .= $fichero;
@@ -82,21 +78,72 @@ function logUsuario(Nutgram $bot, string $mensaje): void
         } else {
             $fichero = fopen($ruta, 'w');
         }
-        fwrite($fichero, $texto);
+        fwrite($fichero, date("d.F H:i:s")." > ".$texto);
         fclose($fichero);
     }
 }
 
 
+function logUsuario(Nutgram $bot, string $mensaje): void
+{
+    // Definimos variables.
+    $usuario = getNombreUsuario($bot);
+    $userId = getIdUsuario($bot);
+    $texto = "[USR] [$usuario:$userId] -> ".$mensaje."\n";
+    escribirLog($texto);
+}
+
+
+function logServicio(string $mensaje): void
+{
+    // Definimos variables.
+    escribirLog("[SYS] $mensaje\n");
+}
+
+
 function getNombreUsuario(Nutgram $bot): string
 {
+    $nombre = '';
     $objetoUsuario = $bot->user();
-    return $objetoUsuario->username;
+    if (isset($objetoUsuario->username) === true) {
+        $nombre = $objetoUsuario->username;
+    }
+    return $nombre;
 }
 
 
 function getIdUsuario(Nutgram $bot): string
 {
+    $id = '';
     $objetoUsuario = $bot->user();
-    return $objetoUsuario->id;
+    if (isset($objetoUsuario->username) === true) {
+        $id = $objetoUsuario->id;
+    }
+
+    return $id;
+}
+
+
+function checkIsAlreadyRunning(): bool
+{
+    exec('ps -ax | grep -i '.NOMBRE_SCRIPT_EXE.' | grep -v grep', $salida);
+    return count($salida) > 1; 
+}
+
+function getLogs(): string
+{
+    exec('tail -100 '.RUTA_HOST.'/logs/'.FICHERO_LOG, $salida);
+    var_dump($salida);
+    var_dump(implode("\n", $salida));
+    return implode("\n", $salida);
+}
+
+
+function validaAdmin(Nutgram $bot, string $clave = '') {
+    $validar = $_ENV['TELEBOT_ADMIN'] === getIdUsuario($bot);
+    if ($validar === true && empty($clave) === false) {
+        $validar = $_ENV['TELEBOT_ADMIN_KEY'] === $clave;
+    }
+
+    return $validar;
 }
