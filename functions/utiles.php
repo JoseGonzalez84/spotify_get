@@ -2,6 +2,13 @@
 
 use SergiX44\Nutgram\Nutgram;
 
+define('OUTPUT_FORMATS', [
+    'mp3' => '-x --audio-format mp3',
+    'webm' => '-f webm',
+    'mp4' => '-f mp4',
+]);
+
+
 function noAccessChain(): bool
 {
     return (isset($_SESSION['access_chain']) === false || empty($_SESSION['access_chain']) === true || $_SESSION['access_expiration'] < time());
@@ -78,7 +85,7 @@ function escribirLog(string $texto): void
         } else {
             $fichero = fopen($ruta, 'w');
         }
-        fwrite($fichero, date("d.F H:i:s")." > ".$texto);
+        fwrite($fichero, "[".time()."] > ".$texto);
         fclose($fichero);
     }
 }
@@ -89,7 +96,7 @@ function logUsuario(Nutgram $bot, string $mensaje): void
     // Definimos variables.
     $usuario = getNombreUsuario($bot);
     $userId = getIdUsuario($bot);
-    $texto = "[USR] [$usuario:$userId] -> ".$mensaje."\n";
+    $texto = "[USR][$usuario:$userId] > ".$mensaje."\n";
     escribirLog($texto);
 }
 
@@ -97,7 +104,7 @@ function logUsuario(Nutgram $bot, string $mensaje): void
 function logServicio(string $mensaje): void
 {
     // Definimos variables.
-    escribirLog("[SYS] $mensaje\n");
+    escribirLog("[SYS] > $mensaje\n");
 }
 
 
@@ -124,18 +131,60 @@ function getIdUsuario(Nutgram $bot): string
 }
 
 
+function buildYtDlpQuery(array $parametros): string
+{
+    extract($parametros);
+
+    $startStop = '';
+    $outputFormat = '';
+
+    if (isset($format) === true || in_array($format, OUTPUT_FORMATS) === true) {
+        $outputFormat = OUTPUT_FORMATS[$format];
+    }
+
+    if (isset($startPosition) === true) {
+        $startStop .= '--start '.$startPosition;
+    }
+
+    if (isset($endPosition) === true) {
+        $startStop  .= ' --end '.$endPosition;
+    }
+
+    return sprintf(
+        "yt-dlp -o /tmp/'%(title)s'.mp3 %s %s %s",
+        $outputFormat,
+        $startStop,
+        $url
+    );
+}
+
+
 function checkIsAlreadyRunning(): bool
 {
     exec('ps -ax | grep -i '.NOMBRE_SCRIPT_EXE.' | grep -v grep', $salida);
-    return count($salida) > 1; 
+    return count($salida) > 2;
 }
+
+
+function checkExecDependency(string $executable): bool
+{
+    exec('which '.$executable, $salida);
+    return count($salida) >= 1;
+}
+
 
 function getLogs(): string
 {
-    exec('tail -100 '.RUTA_HOST.'/logs/'.FICHERO_LOG, $salida);
-    var_dump($salida);
-    var_dump(implode("\n", $salida));
-    return implode("\n", $salida);
+    $salida = '';
+    try {
+        exec('tail -15 '.RUTA_HOST.'/logs/'.FICHERO_LOG, $salida);
+        $salida = implode("\n", $salida);
+    } catch (Exception $ex) {
+        logServicio("No se pueden extraer logs: ".$ex->getMessage());
+        $salida = "No se pudieron traer logs.";
+    }
+    
+    return $salida;
 }
 
 
