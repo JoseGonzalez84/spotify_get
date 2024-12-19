@@ -15,6 +15,12 @@ function noAccessChain(): bool
 }
 
 
+function timeNow(string $format = 'r'): string
+{
+    return date($format);
+}
+
+
 function retryRequest(string $function, mixed $data = null): mixed
 {
     getToken();
@@ -85,7 +91,7 @@ function escribirLog(string $texto): void
         } else {
             $fichero = fopen($ruta, 'w');
         }
-        fwrite($fichero, "[".time()."] > ".$texto);
+        fwrite($fichero, "[".time()."] > ".$texto."\n");
         fclose($fichero);
     }
 }
@@ -96,15 +102,17 @@ function logUsuario(Nutgram $bot, string $mensaje): void
     // Definimos variables.
     $usuario = getNombreUsuario($bot);
     $userId = getIdUsuario($bot);
-    $texto = "[USR][$usuario:$userId] > ".$mensaje."\n";
+    $texto = "[USR][$usuario:$userId] > ".$mensaje;
     escribirLog($texto);
+    //logData($userId, $texto);
 }
 
 
 function logServicio(string $mensaje): void
 {
     // Definimos variables.
-    escribirLog("[SYS] > $mensaje\n");
+    $texto = "[SYS] > $mensaje";
+    escribirLog($texto);
 }
 
 
